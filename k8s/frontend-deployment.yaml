@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stayhive-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stayhive-frontend
+  template:
+    metadata:
+      labels:
+        app: stayhive-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: guru0114/stayhive-frontend:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80

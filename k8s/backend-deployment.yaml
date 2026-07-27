@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stayhive-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stayhive-backend
+  template:
+    metadata:
+      labels:
+        app: stayhive-backend
+    spec:
+      containers:
+      - name: backend
+        image: guru0114/stayhive-backend:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
