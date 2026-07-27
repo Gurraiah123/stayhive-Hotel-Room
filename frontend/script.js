@@ -1,5 +1,5 @@
 // script.js — talks to the StayHive backend API
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://40.192.0.73:5000/api';
 
 let authToken = localStorage.getItem('stayhive_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('stayhive_user') || 'null');
