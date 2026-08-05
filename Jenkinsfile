@@ -67,6 +67,9 @@ pipeline {
     steps {
         script {
             def scannerHome = tool 'SonarScanner'
+            echo "Scanner Home = ${scannerHome}"
+
+            sh "ls -la ${scannerHome} || true"
 
             withSonarQubeEnv('SonarQube') {
                 sh """
