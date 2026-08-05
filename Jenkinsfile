@@ -169,7 +169,7 @@ pipeline {
 
                     version: "1.0.${BUILD_NUMBER}",
 
-                    credentialsId: 'nexus-creds',
+                    credentialsId: 'nexus',
 
                     artifacts: [
                         [
