@@ -64,20 +64,22 @@ pipeline {
         }
 
         stage('SonarQube Scan') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
+    steps {
+        script {
+            def scannerHome = tool 'SonarScanner'
 
-                    sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=stayhive \
-                    -Dsonar.projectName=stayhive \
-                    -Dsonar.sources=. \
-                    -Dsonar.sourceEncoding=UTF-8
-                    '''
-
-                }
+            withSonarQubeEnv('SonarQube') {
+                sh """
+                ${scannerHome}/bin/sonar-scanner \
+                  -Dsonar.projectKey=stayhive \
+                  -Dsonar.projectName=stayhive \
+                  -Dsonar.sources=. \
+                  -Dsonar.sourceEncoding=UTF-8
+                """
             }
         }
+    }
+}
 
         stage('Quality Gate') {
             steps {
