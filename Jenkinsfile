@@ -17,6 +17,7 @@ pipeline {
 
         IMAGE_TAG = "${BUILD_NUMBER}"
 
+        // Nexus running in Docker and exposed on port 8081
         NEXUS_URL = "16.112.182.98:8081"
         NEXUS_REPO = "stayhive-raw"
     }
@@ -55,7 +56,12 @@ pipeline {
 
         stage('SonarQube Scan') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                withCredentials([
+                    string(
+                        credentialsId: 'sonar-token',
+                        variable: 'SONAR_TOKEN'
+                    )
+                ]) {
                     sh '''
                     docker run --rm \
                       -e SONAR_HOST_URL=http://16.112.182.98:9000 \
@@ -94,11 +100,24 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh """
-                docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
-                docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
+                echo "========== Building Frontend =========="
+                docker build \
+                -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                ./frontend
 
-                docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
-                docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
+                echo "========== Building Backend =========="
+                docker build \
+                -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                ./backend
+
+                echo "========== Creating Latest Tags =========="
+                docker tag \
+                ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                ${FRONTEND_IMAGE}:latest
+
+                docker tag \
+                ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                ${BACKEND_IMAGE}:latest
                 """
             }
         }
@@ -106,35 +125,52 @@ pipeline {
         stage('Push Docker Images') {
             steps {
                 sh """
+                echo "========== Push Frontend =========="
                 docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
                 docker push ${FRONTEND_IMAGE}:latest
 
+                echo "========== Push Backend =========="
                 docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
                 docker push ${BACKEND_IMAGE}:latest
                 """
             }
         }
 
-        stage('Package Artifact') {
+        stage('Create ZIP') {
             steps {
                 sh '''
+                echo "========== Creating Nexus Artifact =========="
+
+                rm -f stayhive.zip
+
                 zip -r stayhive.zip . \
-                -x "*.git*" \
-                -x "backend/node_modules/*"
+                    -x "*.git*" \
+                    -x "backend/node_modules/*" \
+                    -x "stayhive.zip"
+
+                echo "========== Artifact Created =========="
+                ls -lh stayhive.zip
                 '''
             }
         }
 
-        stage('Upload Artifact To Nexus') {
+        stage('Upload to Nexus') {
             steps {
                 nexusArtifactUploader(
                     nexusVersion: 'nexus3',
+
                     protocol: 'http',
-                    nexusUrl: '16.112.182.98:8081',
-                    repository: 'stayhive-raw',
+
+                    nexusUrl: "${NEXUS_URL}",
+
+                    repository: "${NEXUS_REPO}",
+
                     groupId: 'com.stayhive',
+
                     version: "1.0.${BUILD_NUMBER}",
+
                     credentialsId: 'nexus-creds',
+
                     artifacts: [
                         [
                             artifactId: 'stayhive',
@@ -150,9 +186,16 @@ pipeline {
         stage('Deploy Containers') {
             steps {
                 sh '''
+                echo "========== Stopping Old Containers =========="
                 docker compose down || true
+
+                echo "========== Pulling Images =========="
                 docker compose pull
+
+                echo "========== Starting Containers =========="
                 docker compose up -d
+
+                echo "========== Cleaning Old Images =========="
                 docker image prune -af
                 '''
             }
@@ -165,6 +208,7 @@ pipeline {
                 docker ps
 
                 echo ""
+                echo "========== Docker Compose Status =========="
                 docker compose ps
                 '''
             }
@@ -177,6 +221,8 @@ pipeline {
             echo "========================================"
             echo "StayHive Deployment Successful"
             echo "========================================"
+            echo "Docker images pushed successfully"
+            echo "Artifact uploaded to Nexus successfully"
         }
 
         failure {
