@@ -65,22 +65,15 @@ pipeline {
 
         stage('SonarQube Scan') {
     steps {
-        script {
-            def scannerHome = tool 'SonarScanner'
-            echo "Scanner Home = ${scannerHome}"
-
-            sh "ls -la ${scannerHome} || true"
-
-            withSonarQubeEnv('SonarQube') {
-                sh """
-                ${scannerHome}/bin/sonar-scanner \
-                  -Dsonar.projectKey=stayhive \
-                  -Dsonar.projectName=stayhive \
-                  -Dsonar.sources=. \
-                  -Dsonar.sourceEncoding=UTF-8
-                """
-            }
-        }
+        sh '''
+        sonar-scanner \
+          -Dsonar.projectKey=stayhive \
+          -Dsonar.projectName=stayhive \
+          -Dsonar.host.url=http://16.112.182.98:9000 \
+          -Dsonar.token=squ_9d7c3bccde32ce6a5621db98ede0788501c74ad7 \
+          -Dsonar.sources=. \
+          -Dsonar.sourceEncoding=UTF-8
+        '''
     }
 }
 
