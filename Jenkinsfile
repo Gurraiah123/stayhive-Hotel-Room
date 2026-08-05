@@ -65,16 +65,19 @@ pipeline {
 
         stage('SonarQube Scan') {
     steps {
-        sh '''
-        docker run --rm \
-          -v "$WORKSPACE:/usr/src" \
-          sonarsource/sonar-scanner-cli \
-          -Dsonar.projectKey=stayhive \
-          -Dsonar.projectName=stayhive \
-          -Dsonar.host.url=http://16.112.182.98:9000 \
-          -Dsonar.token=$SONAR_TOKEN \
-          -Dsonar.sources=/usr/src
-        '''
+        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            sh '''
+            docker run --rm \
+              -v "$WORKSPACE:/usr/src" \
+              -e SONAR_TOKEN="$SONAR_TOKEN" \
+              sonarsource/sonar-scanner-cli \
+              -Dsonar.projectKey=stayhive \
+              -Dsonar.projectName=stayhive \
+              -Dsonar.host.url=http://16.112.182.98:9000 \
+              -Dsonar.token=$SONAR_TOKEN \
+              -Dsonar.sources=/usr/src
+            '''
+        }
     }
 }
 
