@@ -72,7 +72,7 @@ pipeline {
           -Dsonar.projectKey=stayhive \
           -Dsonar.projectName=stayhive \
           -Dsonar.host.url=http://16.112.182.98:9000 \
-          -Dsonar.token=squ_61e29fcf52de1debd20d5f300c173d5290ff16eb \
+          -Dsonar.token=$SONAR_TOKEN \
           -Dsonar.sources=/usr/src
         '''
     }
