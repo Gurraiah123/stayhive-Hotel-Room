@@ -68,13 +68,14 @@ pipeline {
         withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
             sh '''
             docker run --rm \
+              -e SONAR_HOST_URL=http://16.112.182.98:9000 \
+              -e SONAR_TOKEN=$SONAR_TOKEN \
               -v "$WORKSPACE:/usr/src" \
+              -w /usr/src \
               sonarsource/sonar-scanner-cli \
               -Dsonar.projectKey=stayhive \
               -Dsonar.projectName=stayhive \
-              -Dsonar.host.url=http://16.112.182.98:9000 \
-              -Dsonar.token=$SONAR_TOKEN \
-              -Dsonar.sources=/usr/src
+              -Dsonar.sources=.
             '''
         }
     }
