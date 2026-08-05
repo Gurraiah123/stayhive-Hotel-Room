@@ -69,7 +69,6 @@ pipeline {
             sh '''
             docker run --rm \
               -v "$WORKSPACE:/usr/src" \
-              -e SONAR_TOKEN="$SONAR_TOKEN" \
               sonarsource/sonar-scanner-cli \
               -Dsonar.projectKey=stayhive \
               -Dsonar.projectName=stayhive \
