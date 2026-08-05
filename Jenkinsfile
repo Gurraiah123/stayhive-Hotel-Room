@@ -17,7 +17,7 @@ pipeline {
 
         IMAGE_TAG = "${BUILD_NUMBER}"
 
-        // Nexus running in Docker and exposed on port 8081
+        // Nexus
         NEXUS_URL = "16.112.182.98:8081"
         NEXUS_REPO = "stayhive-raw"
     }
@@ -101,23 +101,14 @@ pipeline {
             steps {
                 sh """
                 echo "========== Building Frontend =========="
-                docker build \
-                -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                ./frontend
+                docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
 
                 echo "========== Building Backend =========="
-                docker build \
-                -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
-                ./backend
+                docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
 
                 echo "========== Creating Latest Tags =========="
-                docker tag \
-                ${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                ${FRONTEND_IMAGE}:latest
-
-                docker tag \
-                ${BACKEND_IMAGE}:${IMAGE_TAG} \
-                ${BACKEND_IMAGE}:latest
+                docker tag ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest
+                docker tag ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest
                 """
             }
         }
@@ -158,19 +149,12 @@ pipeline {
             steps {
                 nexusArtifactUploader(
                     nexusVersion: 'nexus3',
-
                     protocol: 'http',
-
                     nexusUrl: "${NEXUS_URL}",
-
                     repository: "${NEXUS_REPO}",
-
                     groupId: 'com.stayhive',
-
                     version: "1.0.${BUILD_NUMBER}",
-
                     credentialsId: 'nexus',
-
                     artifacts: [
                         [
                             artifactId: 'stayhive',
@@ -186,14 +170,18 @@ pipeline {
         stage('Deploy Containers') {
             steps {
                 sh '''
-                echo "========== Stopping Old Containers =========="
-                docker compose down || true
+                echo "========== Current Directory =========="
+                pwd
+                ls -la
 
-                echo "========== Pulling Images =========="
-                docker compose pull
+                echo "========== Stopping Old Containers =========="
+                docker-compose down || true
+
+                echo "========== Pulling Latest Images =========="
+                docker-compose pull
 
                 echo "========== Starting Containers =========="
-                docker compose up -d
+                docker-compose up -d
 
                 echo "========== Cleaning Old Images =========="
                 docker image prune -af
@@ -209,7 +197,7 @@ pipeline {
 
                 echo ""
                 echo "========== Docker Compose Status =========="
-                docker compose ps
+                docker-compose ps
                 '''
             }
         }
