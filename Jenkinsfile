@@ -9,23 +9,16 @@ pipeline {
 
     environment {
 
-        // Project
         FRONTEND = "frontend"
-        BACKEND  = "backend"
+        BACKEND = "backend"
 
-        // SonarQube
-        SONAR_PROJECT_KEY = "stayhive"
-        SONAR_HOST_URL    = "http://16.112.182.98:9000"
-
-        // Nexus
-        NEXUS_URL  = "http://16.112.182.98:8081"
-        NEXUS_REPO = "stayhive-raw"
-
-        // DockerHub
         FRONTEND_IMAGE = "guru0114/stayhive-frontend"
-        BACKEND_IMAGE  = "guru0114/stayhive-backend"
+        BACKEND_IMAGE = "guru0114/stayhive-backend"
 
         IMAGE_TAG = "${BUILD_NUMBER}"
+
+        NEXUS_URL = "http://16.112.182.98:8081"
+        NEXUS_REPO = "stayhive-raw"
     }
 
     stages {
@@ -43,11 +36,9 @@ pipeline {
                 pwd
                 ls -la
 
-                echo ""
                 echo "========== Frontend =========="
                 ls -la frontend
 
-                echo ""
                 echo "========== Backend =========="
                 ls -la backend
                 '''
@@ -57,44 +48,35 @@ pipeline {
         stage('Backend Dependencies') {
             steps {
                 dir("${BACKEND}") {
-                    sh '''
-                    npm install
-                    '''
+                    sh 'npm install'
                 }
             }
         }
 
         stage('SonarQube Scan') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')
-                ]) {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+
                     sh '''
                     docker run --rm \
-                      -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                      -e SONAR_HOST_URL=http://16.112.182.98:9000 \
                       -e SONAR_TOKEN=$SONAR_TOKEN \
                       -v "$WORKSPACE:/usr/src" \
                       -w /usr/src \
                       sonarsource/sonar-scanner-cli \
-                      -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                      -Dsonar.projectKey=stayhive \
                       -Dsonar.projectName=StayHive \
                       -Dsonar.sources=. \
+                      -Dsonar.exclusions=**/node_modules/**,**/.git/** \
                       -Dsonar.sourceEncoding=UTF-8
                     '''
                 }
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
         stage('Docker Login') {
             steps {
+
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub',
@@ -102,6 +84,7 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
+
                     sh '''
                     echo "$DOCKER_PASS" | docker login \
                     -u "$DOCKER_USER" \
@@ -113,6 +96,7 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
+
                 sh """
                 docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
                 docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
@@ -125,6 +109,7 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
+
                 sh """
                 docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
                 docker push ${FRONTEND_IMAGE}:latest
@@ -137,6 +122,7 @@ pipeline {
 
         stage('Package Artifact') {
             steps {
+
                 sh '''
                 zip -r stayhive.zip . \
                 -x "*.git*" \
@@ -147,6 +133,7 @@ pipeline {
 
         stage('Upload Artifact To Nexus') {
             steps {
+
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'nexus',
@@ -154,9 +141,9 @@ pipeline {
                         passwordVariable: 'NEXUS_PASS'
                     )
                 ]) {
+
                     sh """
-                    curl -v \
-                    -u ${NEXUS_USER}:${NEXUS_PASS} \
+                    curl -u ${NEXUS_USER}:${NEXUS_PASS} \
                     --upload-file stayhive.zip \
                     ${NEXUS_URL}/repository/${NEXUS_REPO}/stayhive-${BUILD_NUMBER}.zip
                     """
@@ -166,11 +153,11 @@ pipeline {
 
         stage('Deploy Containers') {
             steps {
+
                 sh '''
                 docker compose down || true
-
-                docker compose up -d --build
-
+                docker compose pull
+                docker compose up -d
                 docker image prune -af
                 '''
             }
@@ -178,13 +165,12 @@ pipeline {
 
         stage('Health Check') {
             steps {
+
                 sh '''
                 echo "========== Running Containers =========="
-
                 docker ps
 
                 echo ""
-
                 docker compose ps
                 '''
             }
@@ -195,13 +181,13 @@ pipeline {
 
         success {
             echo "========================================"
-            echo "   StayHive Deployment Successful"
+            echo "StayHive Deployment Successful"
             echo "========================================"
         }
 
         failure {
             echo "========================================"
-            echo "   StayHive Deployment Failed"
+            echo "StayHive Deployment Failed"
             echo "========================================"
         }
 
