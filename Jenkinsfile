@@ -17,7 +17,7 @@ pipeline {
 
         IMAGE_TAG = "${BUILD_NUMBER}"
 
-        NEXUS_URL = "http://16.112.182.98:8081"
+        NEXUS_URL = "16.112.182.98:8081"
         NEXUS_REPO = "stayhive-raw"
     }
 
@@ -56,7 +56,6 @@ pipeline {
         stage('SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-
                     sh '''
                     docker run --rm \
                       -e SONAR_HOST_URL=http://16.112.182.98:9000 \
@@ -76,7 +75,6 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub',
@@ -84,7 +82,6 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-
                     sh '''
                     echo "$DOCKER_PASS" | docker login \
                     -u "$DOCKER_USER" \
@@ -96,7 +93,6 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-
                 sh """
                 docker build -t ${FRONTEND_IMAGE}:${IMAGE_TAG} ./frontend
                 docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} ./backend
@@ -109,7 +105,6 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-
                 sh """
                 docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
                 docker push ${FRONTEND_IMAGE}:latest
@@ -122,7 +117,6 @@ pipeline {
 
         stage('Package Artifact') {
             steps {
-
                 sh '''
                 zip -r stayhive.zip . \
                 -x "*.git*" \
@@ -133,27 +127,28 @@ pipeline {
 
         stage('Upload Artifact To Nexus') {
             steps {
-
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'nexus',
-                        usernameVariable: 'NEXUS_USER',
-                        passwordVariable: 'NEXUS_PASS'
-                    )
-                ]) {
-
-                    sh """
-                    curl -u ${NEXUS_USER}:${NEXUS_PASS} \
-                    --upload-file stayhive.zip \
-                    ${NEXUS_URL}/repository/${NEXUS_REPO}/stayhive-${BUILD_NUMBER}.zip
-                    """
-                }
+                nexusArtifactUploader(
+                    nexusVersion: 'nexus3',
+                    protocol: 'http',
+                    nexusUrl: '16.112.182.98:8081',
+                    repository: 'stayhive-raw',
+                    groupId: 'com.stayhive',
+                    version: "1.0.${BUILD_NUMBER}",
+                    credentialsId: 'nexus-creds',
+                    artifacts: [
+                        [
+                            artifactId: 'stayhive',
+                            classifier: '',
+                            file: 'stayhive.zip',
+                            type: 'zip'
+                        ]
+                    ]
+                )
             }
         }
 
         stage('Deploy Containers') {
             steps {
-
                 sh '''
                 docker compose down || true
                 docker compose pull
@@ -165,7 +160,6 @@ pipeline {
 
         stage('Health Check') {
             steps {
-
                 sh '''
                 echo "========== Running Containers =========="
                 docker ps
